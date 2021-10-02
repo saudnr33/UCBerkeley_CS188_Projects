@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -17,6 +17,9 @@ from game import Directions
 import random, util
 
 from game import Agent
+
+def absDiff(p1, p2):
+    return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 
 class ReflexAgent(Agent):
     """
@@ -48,6 +51,7 @@ class ReflexAgent(Agent):
         chosenIndex = random.choice(bestIndices) # Pick randomly among the best
 
         "Add more of your code here if you want to"
+        # print(scores, legalMoves, chosenIndex)
 
         return legalMoves[chosenIndex]
 
@@ -74,7 +78,39 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
-        return successorGameState.getScore()
+
+        ## Food Calculationns:
+        ClosestGhost = absDiff(newPos, successorGameState.getGhostPositions()[0])
+        ClosestGhost_pos = (0, 0)
+        for g in successorGameState.getGhostPositions():
+            Temp = absDiff(newPos, g)
+            if Temp <= ClosestGhost:
+                ClosestGhost = Temp
+                ClosestGhost_pos = g
+
+        if ClosestGhost_pos == newPos:
+            return -500
+
+
+        foodList = currentGameState.getFood().asList()
+        if len(foodList) != 0:
+
+            ClosestFood = absDiff(newPos, foodList[0])
+
+            if currentGameState.getFood()[newPos[0]][newPos[1]]:
+                ClosestFood = 0
+            else:
+                for f in foodList:
+                    Temp = absDiff(newPos, f)
+                    if Temp <= ClosestFood:
+                        ClosestFood = Temp
+
+            danger = 1 / (ClosestGhost - 0.8)
+            profit = 1 / (ClosestFood + 0.5)
+            score = -danger + profit
+            return -  1 / (ClosestGhost) + 1 / (ClosestFood +1)
+        return 500
+
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -135,7 +171,54 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
+        hh = self.minmax(gameState, self.depth, 0)[0]
+        #print(hh)
+        return hh
         util.raiseNotDefined()
+
+
+
+
+    def minmax(self, gameState, depth, agentIndex):
+        if depth == 0 or gameState.isWin() or gameState.isLose():
+            return "s" , self.evaluationFunction(gameState)
+        if agentIndex == 0:
+            actions = gameState.getLegalActions(agentIndex)
+            maxValue = -1e1000
+            optimalAction = ""
+
+            # random.shuffle(actions)
+            #print(gameState.getNumAgents())
+
+            for a in actions:
+                nextGameState = gameState.generateSuccessor(agentIndex, a)
+
+                eval = self.minmax(nextGameState, depth , 1)[1]
+
+                if eval > maxValue:
+                    maxValue = eval
+                    optimalAction = a
+            return optimalAction, maxValue
+        else:
+            actions = gameState.getLegalActions(agentIndex)
+            minValue = 1e1000
+            optimalAction = ""
+
+            # random.shuffle(actions)
+            for a in actions:
+
+
+                nextGameState = gameState.generateSuccessor(agentIndex, a)
+                if agentIndex == gameState.getNumAgents() - 1:
+
+                    eval = self.minmax(nextGameState, depth - 1, (agentIndex+1)% gameState.getNumAgents())[1]
+                else:
+                    eval = self.minmax(nextGameState, depth, (agentIndex+1)% gameState.getNumAgents())[1]
+
+                if eval < minValue:
+                    minValue = eval
+                    optimalAction = a
+            return optimalAction, minValue
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
@@ -147,7 +230,64 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
+        hh = self.minmax(gameState, self.depth, 0, alpha = -1e10000, beta = 1e10000)[0]
+        #print(hh)
+        return hh
         util.raiseNotDefined()
+
+
+
+
+    def minmax(self, gameState, depth, agentIndex, alpha, beta):
+        if depth == 0 or gameState.isWin() or gameState.isLose():
+            return "s" , self.evaluationFunction(gameState)
+
+
+        if agentIndex == 0:
+            actions = gameState.getLegalActions(agentIndex)
+            maxValue = -1e1000
+            optimalAction = ""
+
+
+            #print(gameState.getNumAgents())
+
+            for a in actions:
+                nextGameState = gameState.generateSuccessor(agentIndex, a)
+
+                eval = self.minmax(nextGameState, depth , 1, alpha, beta)[1]
+                alpha = max(alpha, eval)
+                if eval > maxValue:
+                    maxValue = eval
+                    optimalAction = a
+
+                if beta < alpha:
+                    break
+            return optimalAction, maxValue
+        else:
+            actions = gameState.getLegalActions(agentIndex)
+            minValue = 1e1000
+            optimalAction = ""
+
+
+            for a in actions:
+
+
+                nextGameState = gameState.generateSuccessor(agentIndex, a)
+                if agentIndex == gameState.getNumAgents() - 1:
+
+                    eval = self.minmax(nextGameState, depth - 1, (agentIndex+1)% gameState.getNumAgents(), alpha, beta)[1]
+                else:
+                    eval = self.minmax(nextGameState, depth, (agentIndex+1)% gameState.getNumAgents(), alpha, beta)[1]
+
+                if eval < minValue:
+                    minValue = eval
+                    optimalAction = a
+
+                beta = min(beta, eval)
+                if beta < alpha:
+                    break
+            return optimalAction, minValue
+
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
@@ -162,7 +302,53 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         legal moves.
         """
         "*** YOUR CODE HERE ***"
+        hh = self.minmax(gameState, self.depth, 0)[0]
+        #print(hh)
+        return hh
         util.raiseNotDefined()
+
+
+
+
+    def minmax(self, gameState, depth, agentIndex):
+        if depth == 0 or gameState.isWin() or gameState.isLose():
+            return "s" , self.evaluationFunction(gameState)
+        if agentIndex == 0:
+            actions = gameState.getLegalActions(agentIndex)
+            maxValue = -1e1000
+            optimalAction = ""
+
+            # random.shuffle(actions)
+            #print(gameState.getNumAgents())
+
+            for a in actions:
+                nextGameState = gameState.generateSuccessor(agentIndex, a)
+
+                eval = self.minmax(nextGameState, depth , 1)[1]
+
+                if eval > maxValue:
+                    maxValue = eval
+                    optimalAction = a
+            return optimalAction, maxValue
+        else:
+            actions = gameState.getLegalActions(agentIndex)
+            minValue = 1e1000
+            optimalAction = ""
+
+            # random.shuffle(actions)
+            toReturn = 0
+            for a in actions:
+
+
+                nextGameState = gameState.generateSuccessor(agentIndex, a)
+                if agentIndex == gameState.getNumAgents() - 1:
+
+                    eval = self.minmax(nextGameState, depth - 1, (agentIndex+1)% gameState.getNumAgents())[1]
+                else:
+                    eval = self.minmax(nextGameState, depth, (agentIndex+1)% gameState.getNumAgents())[1]
+
+                toReturn += eval
+            return "", toReturn/len(actions)
 
 def betterEvaluationFunction(currentGameState):
     """
@@ -172,7 +358,9 @@ def betterEvaluationFunction(currentGameState):
     DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    currentScore = state.getScore()
+    print("here")
+    return 0
 
 # Abbreviation
 better = betterEvaluationFunction
