@@ -105,9 +105,6 @@ class ReflexAgent(Agent):
                     if Temp <= ClosestFood:
                         ClosestFood = Temp
 
-            danger = 1 / (ClosestGhost - 0.8)
-            profit = 1 / (ClosestFood + 0.5)
-            score = -danger + profit
             return -  1 / (ClosestGhost) + 1 / (ClosestFood +1)
         return 500
 
@@ -358,9 +355,29 @@ def betterEvaluationFunction(currentGameState):
     DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    currentScore = state.getScore()
-    print("here")
-    return 0
+    pos = currentGameState.getPacmanPosition()
+    scaredTimes = [ghostState.scaredTimer for ghostState in currentGameState.getGhostStates()]
+
+    minFood = 10000
+    for f in currentGameState.getFood().asList():
+        minFood = min(minFood, manhattanDistance(pos, f))
+
+    minCap = 10000
+    for c in currentGameState.getCapsules():
+        minCap = min(minCap, manhattanDistance(pos, c))
+
+    minG = 10000
+    for g in currentGameState.getGhostStates():
+        Temp = manhattanDistance(pos, g.getPosition())
+        if Temp < minG:
+            if g.scaredTimer >= Temp:
+                minG = 1/(Temp + 1)
+            else:
+                minG = Temp
+
+    a, b, c, d, e, f= 1/5, 11, 3, 16, 8, 12
+    return  (a * (minG + minFood)) + (b * currentGameState.getScore()) + (c * sum(scaredTimes)) + (d/ (len( currentGameState.getCapsules()) + minFood)) + ((e / (minCap + 1)) + (f / (minFood + 1)))
+
 
 # Abbreviation
 better = betterEvaluationFunction
